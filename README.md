@@ -7,3 +7,5 @@ Instructions:
 2. Select the folder you'd like to scan, and if you'd like to scan sub-directories.
 3. Click the "Find zero byte files" button.
 4. If any 0 byte files are detected, a list will open up detailing them. Double click to go to them in explorer, right click to delete them or copy their path.
+
+It is safe to ignore .txt files which are empty, but feel free to prune them if they seem like long-forgotten files.
