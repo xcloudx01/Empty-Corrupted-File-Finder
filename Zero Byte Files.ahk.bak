@@ -1,10 +1,20 @@
 ﻿;Environment
+	;Version: 1.0
 	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 	#SingleInstance Force
 	
-;Default settings
-	SearchDirectory = %A_ScriptDir%
-	Recurse = 1
+;Variables
+	;Get settings from ini file. Check to see if .ini file exists first.
+		Ifexist,ZeroByteFinderSettings.ini
+		{
+			fileread,Temp,ZeroByteFinderSettings.ini
+			ifinstring,Temp,[settings]
+				GoSub,LoadSettings
+			Else
+				gosub, SetDefaultVariableValues
+		}
+		Else
+			gosub, SetDefaultVariableValues
 
 ;GUI
 	Gui, Add, Text, x12 y19 w90 h20 , Where to search:
@@ -16,13 +26,16 @@
 	Gui, Add, Edit, x102 y19 w340 h20 vSearchDirectory, %SearchDirectory%
 	Gui, Add, Progress, x10 y80 w475 h10 cBlue vProgressBar
 	GuiControl,Hide,CancelScanButton
-	Gui, Show, h100 w490, Cloud's Empty File Finder
-	Menu,Menu1,Add,Copy to clipboard,CopyToClipboard ;Used when rightclicking a found empty file.
+	Gui, Show, h100 w490, xcloudx01's Empty File Finder
+	Menu,Menu1,Add,Copy path to clipboard,CopyToClipboard ;Used when rightclicking a found empty file.
+	Menu,Menu1,Add,Show in Explorer,HighlightInExplorer ;Used when rightclicking a found empty file.
+	Menu,Menu1,Add,Delete file,DeleteFile ;Used when rightclicking a found empty file.
 	Return
 
 ;Buttons
 	FindZeroByteFiles: ;Main function of the script
 		Gui 1:submit,nohide
+		GuiControl 1:,ProgressBar,0
 		IfNotExist,%SearchDirectory%
 		{
 			msgbox,48,Error!,The search directory was not found!
@@ -31,6 +44,7 @@
 		;Blank out needed variables.
 			CancelRequested = 0 ;Reset any cancel requests
 			ZeroByteFilesFoundArray := Object() ; Create a blank array
+			ZeroByteFilesFoundArrayExtension := Object() ; Create a blank array
 			ZeroByteFilesCount = 0
 			NumberOfFilesToScan = 0
 			ListOfZeroByteFiles =
@@ -48,81 +62,141 @@
 			else
 				NumberOfFilesToScan ++
 		}
-		GuiControl,,ScanningText,Scanning..
-		Loop Files, %SearchDirectory%\*.*,%RecurseIntoSubdirectories%
+		if NumberOfFilesToScan = 1 ;Error out if there's nothing to do.
 		{
-			if CancelRequested
-				Break
-			else
-			{
-				PercentScanned := Ceil(A_Index / NumberOfFilesToScan * 100) ;Round up percentage value
-				GuiControl,,ProgressBar,%PercentScanned%
-				FileGetSize,FileSize,%A_LoopFileFullPath%
-				if FileSize = 0
-				{
-					ZeroByteFilesCount ++
-					ZeroByteFilesFoundArray.Insert(A_LoopFileFullPath) 
-				}
-			}
-		}
-		if CancelRequested
-			{
-				GuiControl,,ScanningText,Scan cancelled.
-				GuiControl,Hide,CancelScanButton
-				GuiControl,Show,FindFilesButton
-				GuiControl,,ProgressBar,0
-				return
-			}
-		If ZeroByteFilesCount
-		{
-			Gui 2: Add, ListView, altsubmit x12 y29 w1390 h540 gSelectFoundZeroByteFile, Zero Byte Files
-			Gui,2:default ;Needed to add items to list with LV_Add			
-			Loop %ZeroByteFilesCount%
-				{
-					element := ZeroByteFilesFoundArray[A_Index]
-					LV_Add("",element)
-				}			
-				Gui 2: Add, Text, x12 y9 w60 h20 , Empty Files:
-				Gui 2: Add, Text, x592 y9 w250 h20 , Doubleclick an item to highlight it in Explorer.
-				Gui 2: Add, Button, x12 y569 w1390 h30 g2GuiClose, Close
-				Gui 2: Show, x536 y234 h609 w1417, Empty files were found!
+			GuiControl,,ScanningText,No files in the scan folder.
+			GuiControl,Hide,CancelScanButton
+			GuiControl,Show,FindFilesButton
+			return
 		}
 		else
-			GuiControl,,ScanningText,No empty files found.
-		GuiControl,Hide,CancelScanButton
-		GuiControl,Show,FindFilesButton
-		return
+		{
+			GuiControl,,ScanningText,Scanning..
+			Loop Files, %SearchDirectory%\*.*,%RecurseIntoSubdirectories%
+			{
+				if CancelRequested
+					Break
+				else
+				{
+					PercentScanned := Ceil(A_Index / NumberOfFilesToScan * 100) ;Round up percentage value
+					GuiControl,,ProgressBar,%PercentScanned%
+					FileGetSize,FileSize,%A_LoopFileFullPath%
+					if FileSize = 0
+					{
+						ZeroByteFilesCount ++
+						ZeroByteFilesFoundArray.Insert(A_LoopFileFullPath)
+						ZeroByteFilesFoundArrayExtension.Insert(A_LoopFileExt)
+					}
+				}
+			}
+			if CancelRequested
+				{
+					GuiControl,,ScanningText,Scan cancelled.
+					GuiControl,Hide,CancelScanButton
+					GuiControl,Show,FindFilesButton
+					GuiControl,,ProgressBar,0
+					return
+				}
+			If ZeroByteFilesCount
+			{
+				GuiControl,,ScanningText,Empty files were found!
+				ListViewWidth = 980
+				FileNameWidth := Ceil(ListViewWidth - 105 * 0.8 )
+				ExtensionWidth = 80
+				Gui 2: Add, ListView, -multi altsubmit x10 y29 w980 h540 gSelectFoundZeroByteFile, Path|Extension
+				Gui,2:default ;Needed to add items to list with LV_Add			
+				Loop %ZeroByteFilesCount%
+					{
+						element := ZeroByteFilesFoundArray[A_Index]
+						element2 := ZeroByteFilesFoundArrayExtension[A_Index]
+						LV_Add("",element,element2)
+					}			
+					Gui 2: Add, Text, x10 y9 w60 h20 , Empty Files:
+					Gui 2: Add, Text, x400 y9 w250 h20 , Doubleclick an item to highlight it in Explorer.
+					Gui 2: Add, Button, x9 y572 w982 h30 g2GuiClose, Close
+					LV_ModifyCol(1,FileNameWidth)
+					LV_ModifyCol(2,ExtensionWidth)				
+					Gui 2: Show, h609 w1000, Empty files were found!
+			}
+			else
+				GuiControl,,ScanningText,No empty files found.
+			GuiControl,Hide,CancelScanButton
+			GuiControl,Show,FindFilesButton
+			return
+		}
 
 CancelScan:
-CancelRequested = 1
-return
+	CancelRequested = 1
+	return
 
 SelectSearchDirectory:
-FileSelectFolder,SearchDirectory,SearchDirectory,3
-GuiControl 1:,SearchDirectory,%SearchDirectory%
-return
+	FileSelectFolder,SelectedNewSearchFolder,SearchDirectory,3
+	if SelectedNewSearchFolder ;Only update on user selected a new folder, not on a cancel.
+	{
+		SearchDirectory := SelectedNewSearchFolder
+		GuiControl 1:,SearchDirectory,%SearchDirectory%
+	}
+	return
+	
 
 SelectFoundZeroByteFile:
-	SelectedZeroByteFile := ZeroByteFilesFoundArray[A_EventInfo] ;Buffer what file is currently selected in the listview.
+	Gui,2:default ;Needed for LV_GetText
+	LV_GetText(SelectedZeroByteFile, A_EventInfo) ;what file is currently selected in the listview.
 	StringGetPos,SlashPos,SelectedZeroByteFile,\,R
 	StringMid,SelectedZeroByteFileDirectory,SelectedZeroByteFile,0,SlashPos ;Trim the variable until we just have the directory
+	SelectedEventInListView := A_EventInfo
 	If A_GuiEvent = Doubleclick
-	{
-		;Run %SelectedZeroByteFileDirectory%
-		Run,% "explorer.exe /e`, [color=Red]/n[/color]`, /select`," SelectedZeroByteFile
-	}
+		gosub,HighlightInExplorer
 	else if A_GuiEvent = Rightclick
 		 Menu,Menu1,Show
 	return
+	
+DeleteFile:
+	Msgbox,36,Delete file confirmation,The following file will be deleted to the recycle bin:`n%SelectedZeroByteFile%`n`nDo you wish to continue?
+	ifMsgBox yes
+	{
+		filerecycle,%SelectedZeroByteFile%
+		Gui,2:default ;Needed to delete items from list with LV_Delete	
+		LV_Delete(SelectedEventInListView)
+	}
+	return
 
-CopyToClipboard:
-	clipboard = %SelectedZeroByteFile%
-return
 
-GuiClose:
-ExitApp
+;Subroutines
+	SetDefaultVariableValues:
+		SearchDirectory = %A_WorkingDir%
+		Recurse = 1
+		return
 
-2GuiClose:
-Gui 2: Destroy
-GuiControl 1:,ProgressBar,0
-return
+	LoadSettings:
+		iniread,Recurse,ZeroByteFinderSettings.ini,Settings,Recurse
+		iniread,SearchDirectory,ZeroByteFinderSettings.ini,Settings,SearchDirectory
+		if (SearchDirectory = "ERROR" or SearchDirectory = "") ;Restore default if saved value was an error or blank
+			SearchDirectory = %A_WorkingDir%
+		Return
+		
+	SaveSettings:
+		gui 1:submit,nohide
+		IniWrite,%Recurse%,ZeroByteFinderSettings.ini,Settings,Recurse
+		IniWrite,%SearchDirectory%,ZeroByteFinderSettings.ini,Settings,SearchDirectory
+		return
+		
+	CopyToClipboard:
+		clipboard = %SelectedZeroByteFile%
+		return
+	
+	HighlightInExplorer:
+	Run,% "explorer.exe /e`, [color=Red]/n[/color]`, /select`," SelectedZeroByteFile
+	return
+
+	GuiClose:
+		gosub,SaveSettings
+		ExitApp
+
+	2GuiClose:
+		GuiControl 1:,ProgressBar,0
+		GuiControl 1:,ScanningText,
+		GuiControl 1:Hide,CancelScanButton
+		GuiControl 1:Show,FindFilesButton
+		Gui 2: Destroy
+		return
