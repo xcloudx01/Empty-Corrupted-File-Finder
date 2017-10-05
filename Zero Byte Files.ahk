@@ -1,7 +1,8 @@
 ﻿;Environment
-	;Version: 1.0. 5th Oct 2017
+	;Version: 1.01. 5th Oct 2017
 	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 	#SingleInstance Force
+	SetBatchLines,-1 ;Thanks Helgef <3
 	
 ;Variables
 	;Get settings from ini file. Check to see if .ini file exists first.
