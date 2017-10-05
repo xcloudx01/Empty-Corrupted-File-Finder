@@ -1,5 +1,5 @@
 ﻿;Environment
-	;Version: 1.0
+	;Version: 1.0. 5th Oct 2017
 	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 	#SingleInstance Force
 	
@@ -22,10 +22,10 @@
 	Gui, Add, Button, x452 y19 w30 h20 gSelectSearchDirectory, ..
 	Gui, Add, Button, x190 y49 w100 h30 gFindZeroByteFiles vFindFilesButton, Find zero byte files
 	Gui, Add, Button, x190 y49 w100 h30 gCancelScan vCancelScanButton, Cancel
+	GuiControl,Hide,CancelScanButton
 	Gui, Add, Checkbox, x10 y49 w170 vRecurse Checked%Recurse%,Recurse into sub-directories?
 	Gui, Add, Edit, x102 y19 w340 h20 vSearchDirectory, %SearchDirectory%
 	Gui, Add, Progress, x10 y80 w475 h10 cBlue vProgressBar
-	GuiControl,Hide,CancelScanButton
 	Gui, Show, h100 w490, xcloudx01's Empty File Finder
 	Menu,Menu1,Add,Copy path to clipboard,CopyToClipboard ;Used when rightclicking a found empty file.
 	Menu,Menu1,Add,Show in Explorer,HighlightInExplorer ;Used when rightclicking a found empty file.
@@ -36,7 +36,7 @@
 	FindZeroByteFiles: ;Main function of the script
 		Gui 1:submit,nohide
 		GuiControl 1:,ProgressBar,0
-		IfNotExist,%SearchDirectory%
+		IfNotExist,%SearchDirectory% ;Only run when searchdir actually exists.
 		{
 			msgbox,48,Error!,The search directory was not found!
 			return
@@ -55,8 +55,10 @@
 			RecurseIntoSubdirectories = R
 		Else
 			RecurseIntoSubdirectories =
-		Loop Files, %SearchDirectory%\*.*,%RecurseIntoSubdirectories%
+		Loop Files, %SearchDirectory%\*.*,%RecurseIntoSubdirectories% ;Count how many files there are to scan.
 		{
+			ifinstring,A_LoopFileFullPath,$RECYCLE.BIN ;Skip scanning the recycle bin
+				continue
 			if CancelRequested
 				Break
 			else
@@ -74,6 +76,8 @@
 			GuiControl,,ScanningText,Scanning..
 			Loop Files, %SearchDirectory%\*.*,%RecurseIntoSubdirectories%
 			{
+				ifinstring,A_LoopFileFullPath,$RECYCLE.BIN ;Skip scanning the recycle bin
+					continue
 				if CancelRequested
 					Break
 				else
@@ -107,9 +111,10 @@
 				Gui,2:default ;Needed to add items to list with LV_Add			
 				Loop %ZeroByteFilesCount%
 					{
-						element := ZeroByteFilesFoundArray[A_Index]
-						element2 := ZeroByteFilesFoundArrayExtension[A_Index]
-						LV_Add("",element,element2)
+						FilePath := ZeroByteFilesFoundArray[A_Index]
+						stringreplace,FilePath,FilePath,\\,\,A ;Correct any double slashes
+						FileExt := ZeroByteFilesFoundArrayExtension[A_Index]
+						LV_Add("",FilePath,FileExt)
 					}			
 					Gui 2: Add, Text, x10 y9 w60 h20 , Empty Files:
 					Gui 2: Add, Text, x400 y9 w250 h20 , Doubleclick an item to highlight it in Explorer.
