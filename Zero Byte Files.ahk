@@ -24,7 +24,7 @@
 	Gui, Add, Button, x190 y49 w100 h30 gFindZeroByteFiles vFindFilesButton, Find zero byte files
 	Gui, Add, Button, x190 y49 w100 h30 gCancelScan vCancelScanButton, Cancel
 	GuiControl,Hide,CancelScanButton
-	Gui, Add, Checkbox, x10 y49 w170 vRecurse Checked%Recurse%,Recurse into sub-directories?
+	Gui, Add, Checkbox, x10 y49 w170 vRecurse Checked%Recurse%,Scan inside sub-directories
 	Gui, Add, Edit, x102 y19 w340 h20 vSearchDirectory, %SearchDirectory%
 	Gui, Add, Progress, x10 y80 w475 h10 cBlue vProgressBar
 	Gui, Show, h100 w490, xcloudx01's Empty File Finder
