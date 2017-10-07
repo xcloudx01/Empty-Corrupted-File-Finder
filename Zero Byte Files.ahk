@@ -1,5 +1,5 @@
 ﻿;Environment
-	;Version: 1.02. 7th Oct 2017
+	;Version: 1.021. 7th Oct 2017
 	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 	#SingleInstance Force
 	SetBatchLines,-1 ;Thanks Helgef <3
@@ -34,13 +34,8 @@
 
 ;Hotkeys
 	Hotkey,IfWinActive,Empty files were found!
-	Hotkey,del,DeleteFileViaHotkey
+	Hotkey,del,DeleteFile
 	Return
-	
-DeleteFileViaHotkey:
-	HotkeyPressed = 1
-	gosub DeleteFile
-	return
 
 ;Buttons
 	FindZeroByteFiles: ;Main function of the script
@@ -128,7 +123,8 @@ DeleteFileViaHotkey:
 					}			
 					Gui 2: Add, Text, x10 y9 w60 h20 , Empty Files:
 					Gui 2: Add, Text, x400 y9 w250 h20 , Doubleclick an item to highlight it in Explorer.
-					Gui 2: Add, Button, x9 y572 w982 h30 g2GuiClose, Close
+					Gui 2: Add, Button, x9 y572 w150 h30 g2GuiClose, Close
+					Gui 2: Add, Button, x842 y572 w150 h30 gDeleteFile, Delete selected file/s
 					LV_ModifyCol(1,FileNameWidth)
 					LV_ModifyCol(2,ExtensionWidth)				
 					Gui 2: Show, h609 w1000, Empty files were found!
@@ -142,14 +138,18 @@ DeleteFileViaHotkey:
 		
 	DeleteFile:
 		Gui,2:default ;Needed for LV_GetCount
+		BUFFERSelectedEventInListView := SelectedEventInListView ;This variable gets changed the second the mouse gets clicked, we need to store its current value.
+		BUFFERSelectedZeroByteFile := SelectedZeroByteFile ;This variable gets changed the second the mouse gets clicked, we need to store its current value.	
 		NumberOfFilesToDelete := LV_GetCount("S")
 		if NumberOfFilesToDelete = 1
 		{
-			Msgbox,36,Delete file confirmation,The following file will be deleted to the recycle bin:`n%SelectedZeroByteFile%`n`nDo you wish to continue?
+			if BUFFERSelectedZeroByteFile = Path ;If something went wrong with detecting the path, don't go any further with deleting.
+				return
+			Msgbox,36,Delete file confirmation,The following file will be deleted to the recycle bin:`n%BUFFERSelectedZeroByteFile%`n`nDo you wish to continue?
 			ifMsgBox yes
 			{
-				filerecycle,%SelectedZeroByteFile%
-				LV_Delete(SelectedEventInListView)
+				filerecycle,%BUFFERSelectedZeroByteFile%
+				LV_Delete(BUFFERSelectedEventInListView)
 			}
 		}
 		else ;Make a list of what files were selected for deletion.
@@ -167,11 +167,13 @@ DeleteFileViaHotkey:
 				else
 					SelectedFilesForDeletionList = %SelectedFilesForDeletionList%|%LvText%
 			}
+			if SelectedFilesForDeletionList = EMPTY ;If we scanned everything selected and still came back empty, don't bother showing the UI.
+				return
 			Gui 3: Add, ListBox, x12 y39 w450 h140 , %SelectedFilesForDeletionList%
 			Gui 3: Add, Text, x12 y19 w440 h20 , The following files will be deleted:
 			Gui 3: Add, Text, x12 y189 w440 h20 , Do you wish to continue?
-			Gui 3: Add, Button, x362 y219 w100 h30 gDeleteMultipleFilesYes +Default, Yes
-			Gui 3: Add, Button, x252 y219 w100 h30 gDeleteMultipleFilesNo, No
+			Gui 3: Add, Button, x252 y219 w100 h30 gDeleteMultipleFilesYes +Default, Yes
+			Gui 3: Add, Button, x362 y219 w100 h30 gDeleteMultipleFilesNo, No
 			Gui 3: Show, h264 w477, Delete file confirmation
 		}
 		return
@@ -205,9 +207,19 @@ DeleteFileViaHotkey:
 		return		
 
 	SelectFoundZeroByteFile: ;This acts more like a function. It's called anytime something is selected in the list of found files.
-	;SelectedFile();
 		Gui,2:default ;Needed for LV_GetText
-		if HotkeyPressed ;If delete key was used, we need to use another method to return what item is actually selected.
+		if (A_GuiEvent = "Doubleclick" or A_GuiEvent = "RightClick") ;If double or rightclick, method is slightly different.
+		{
+			LV_GetText(SelectedZeroByteFile, A_EventInfo) ;what file is currently selected in the listview.
+			StringGetPos,SlashPos,SelectedZeroByteFile,\,R
+			StringMid,SelectedZeroByteFileDirectory,SelectedZeroByteFile,0,SlashPos ;Trim the variable until we just have the directory
+			SelectedEventInListView := A_EventInfo
+			If A_GuiEvent = Doubleclick
+				gosub,HighlightInExplorer
+			else if A_GuiEvent = Rightclick
+				 Menu,Menu1,Show
+		}
+		else
 		{
 			RowNumber = 0  ; This causes the first loop iteration to start the search at the top of the list.
 			Loop
@@ -220,17 +232,6 @@ DeleteFileViaHotkey:
 			}
 			return
 		}
-		else
-		{
-			LV_GetText(SelectedZeroByteFile, A_EventInfo) ;what file is currently selected in the listview.
-			StringGetPos,SlashPos,SelectedZeroByteFile,\,R
-			StringMid,SelectedZeroByteFileDirectory,SelectedZeroByteFile,0,SlashPos ;Trim the variable until we just have the directory
-			SelectedEventInListView := A_EventInfo
-			If A_GuiEvent = Doubleclick
-				gosub,HighlightInExplorer
-			else if A_GuiEvent = Rightclick
-				 Menu,Menu1,Show
-		 }
 		return
 
 ;Subroutines
