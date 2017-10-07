@@ -1,5 +1,5 @@
 ﻿;Environment
-	;Version: 1.01. 5th Oct 2017
+	;Version: 1.02. 7th Oct 2017
 	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 	#SingleInstance Force
 	SetBatchLines,-1 ;Thanks Helgef <3
@@ -30,8 +30,17 @@
 	Gui, Show, h100 w490, xcloudx01's Empty File Finder
 	Menu,Menu1,Add,Copy path to clipboard,CopyToClipboard ;Used when rightclicking a found empty file.
 	Menu,Menu1,Add,Show in Explorer,HighlightInExplorer ;Used when rightclicking a found empty file.
-	Menu,Menu1,Add,Delete file,DeleteFile ;Used when rightclicking a found empty file.
+	Menu,Menu1,Add,Delete file/s,DeleteFile ;Used when rightclicking a found empty file.
+
+;Hotkeys
+	Hotkey,IfWinActive,Empty files were found!
+	Hotkey,del,DeleteFileViaHotkey
 	Return
+	
+DeleteFileViaHotkey:
+	HotkeyPressed = 1
+	gosub DeleteFile
+	return
 
 ;Buttons
 	FindZeroByteFiles: ;Main function of the script
@@ -108,7 +117,7 @@
 				ListViewWidth = 980
 				FileNameWidth := Ceil(ListViewWidth - 105 * 0.8 )
 				ExtensionWidth = 80
-				Gui 2: Add, ListView, -multi altsubmit x10 y29 w980 h540 gSelectFoundZeroByteFile, Path|Extension
+				Gui 2: Add, ListView, altsubmit x10 y29 w980 h540 gSelectFoundZeroByteFile, Path|Extension
 				Gui,2:default ;Needed to add items to list with LV_Add			
 				Loop %ZeroByteFilesCount%
 					{
@@ -130,43 +139,99 @@
 			GuiControl,Show,FindFilesButton
 			return
 		}
+		
+	DeleteFile:
+		Gui,2:default ;Needed for LV_GetCount
+		NumberOfFilesToDelete := LV_GetCount("S")
+		if NumberOfFilesToDelete = 1
+		{
+			Msgbox,36,Delete file confirmation,The following file will be deleted to the recycle bin:`n%SelectedZeroByteFile%`n`nDo you wish to continue?
+			ifMsgBox yes
+			{
+				filerecycle,%SelectedZeroByteFile%
+				LV_Delete(SelectedEventInListView)
+			}
+		}
+		else ;Make a list of what files were selected for deletion.
+		{
+			SelectedFilesForDeletionList = EMPTY ;Wipe the selected file list before we start our selections to it.
+			RowNumber = 0  ; This causes the first loop iteration to start the search at the top of the list.
+			Loop
+			{
+				RowNumber := LV_GetNext(RowNumber)  ; Resume the search at the row after that found by the previous iteration.
+				if not RowNumber  ; The above returned zero, so there are no more selected rows.
+					break
+				LV_GetText(LvText, RowNumber)
+				If SelectedFilesForDeletionList = EMPTY
+					SelectedFilesForDeletionList = %LvText% ;First item doesn't need a linebreak/pipe character.
+				else
+					SelectedFilesForDeletionList = %SelectedFilesForDeletionList%|%LvText%
+			}
+			Gui 3: Add, ListBox, x12 y39 w450 h140 , %SelectedFilesForDeletionList%
+			Gui 3: Add, Text, x12 y19 w440 h20 , The following files will be deleted:
+			Gui 3: Add, Text, x12 y189 w440 h20 , Do you wish to continue?
+			Gui 3: Add, Button, x362 y219 w100 h30 gDeleteMultipleFilesYes, Yes
+			Gui 3: Add, Button, x252 y219 w100 h30 gDeleteMultipleFilesNo, No
+			Gui 3: Show, h264 w477, Delete file confirmation
+		}
+		return
 
-CancelScan:
-	CancelRequested = 1
-	return
+	DeleteMultipleFilesYes:
+		Gui 3: Destroy
+		Gui,2: default ;Needed to delete items from list with LV_Delete
+			loop, % LV_GetCount("S")
+				{
+					LV_GetText(LvText, LV_GetNext(-1))
+					LV_Delete(LV_GetNext(-1))
+					filerecycle, % LvText
+				}
+		return
 
-SelectSearchDirectory:
-	FileSelectFolder,SelectedNewSearchFolder,SearchDirectory,3
-	if SelectedNewSearchFolder ;Only update on user selected a new folder, not on a cancel.
-	{
-		SearchDirectory := SelectedNewSearchFolder
-		GuiControl 1:,SearchDirectory,%SearchDirectory%
-	}
-	return
-	
+	DeleteMultipleFilesNo:
+		Gui 3: Destroy
+		return
+		
+	CancelScan:
+		CancelRequested = 1
+		return
 
-SelectFoundZeroByteFile:
-	Gui,2:default ;Needed for LV_GetText
-	LV_GetText(SelectedZeroByteFile, A_EventInfo) ;what file is currently selected in the listview.
-	StringGetPos,SlashPos,SelectedZeroByteFile,\,R
-	StringMid,SelectedZeroByteFileDirectory,SelectedZeroByteFile,0,SlashPos ;Trim the variable until we just have the directory
-	SelectedEventInListView := A_EventInfo
-	If A_GuiEvent = Doubleclick
-		gosub,HighlightInExplorer
-	else if A_GuiEvent = Rightclick
-		 Menu,Menu1,Show
-	return
-	
-DeleteFile:
-	Msgbox,36,Delete file confirmation,The following file will be deleted to the recycle bin:`n%SelectedZeroByteFile%`n`nDo you wish to continue?
-	ifMsgBox yes
-	{
-		filerecycle,%SelectedZeroByteFile%
-		Gui,2:default ;Needed to delete items from list with LV_Delete	
-		LV_Delete(SelectedEventInListView)
-	}
-	return
+	SelectSearchDirectory:
+		FileSelectFolder,SelectedNewSearchFolder,SearchDirectory,3
+		if SelectedNewSearchFolder ;Only update on user selected a new folder, not on a cancel.
+		{
+			SearchDirectory := SelectedNewSearchFolder
+			GuiControl 1:,SearchDirectory,%SearchDirectory%
+		}
+		return		
 
+	SelectFoundZeroByteFile: ;This acts more like a function. It's called anytime something is selected in the list of found files.
+	;SelectedFile();
+		Gui,2:default ;Needed for LV_GetText
+		if HotkeyPressed ;If delete key was used, we need to use another method to return what item is actually selected.
+		{
+			RowNumber = 0  ; This causes the first loop iteration to start the search at the top of the list.
+			Loop
+			{
+				RowNumber := LV_GetNext(RowNumber)  ; Resume the search at the row after that found by the previous iteration.
+				if not RowNumber  ; The above returned zero, so there are no more selected rows.
+					break
+				LV_GetText(SelectedZeroByteFile, RowNumber)
+				SelectedEventInListView := RowNumber
+			}
+			return
+		}
+		else
+		{
+			LV_GetText(SelectedZeroByteFile, A_EventInfo) ;what file is currently selected in the listview.
+			StringGetPos,SlashPos,SelectedZeroByteFile,\,R
+			StringMid,SelectedZeroByteFileDirectory,SelectedZeroByteFile,0,SlashPos ;Trim the variable until we just have the directory
+			SelectedEventInListView := A_EventInfo
+			If A_GuiEvent = Doubleclick
+				gosub,HighlightInExplorer
+			else if A_GuiEvent = Rightclick
+				 Menu,Menu1,Show
+		 }
+		return
 
 ;Subroutines
 	SetDefaultVariableValues:
@@ -206,3 +271,12 @@ DeleteFile:
 		GuiControl 1:Show,FindFilesButton
 		Gui 2: Destroy
 		return
+		
+	3GuiClose:
+		Gui 3: Destroy
+		return
+		
+;Functions
+SelectedFile()
+{
+}
