@@ -275,8 +275,3 @@ DeleteFileViaHotkey:
 	3GuiClose:
 		Gui 3: Destroy
 		return
-		
-;Functions
-SelectedFile()
-{
-}
