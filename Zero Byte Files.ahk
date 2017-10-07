@@ -169,7 +169,7 @@
 			}
 			if SelectedFilesForDeletionList = EMPTY ;If we scanned everything selected and still came back empty, don't bother showing the UI.
 				return
-			Gui 3: Add, ListBox, x12 y39 w450 h140 , %SelectedFilesForDeletionList%
+			Gui 3: Add, ListBox, x12 y39 w450 h140 HScroll, %SelectedFilesForDeletionList%
 			Gui 3: Add, Text, x12 y19 w440 h20 , The following files will be deleted:
 			Gui 3: Add, Text, x12 y189 w440 h20 , Do you wish to continue?
 			Gui 3: Add, Button, x252 y219 w100 h30 gDeleteMultipleFilesYes +Default, Yes
