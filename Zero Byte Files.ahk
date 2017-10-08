@@ -1,5 +1,5 @@
 ﻿;Environment
-	;Version: 1.021. 7th Oct 2017
+	;Version: 1.022. 7th Oct 2017
 	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 	#SingleInstance Force
 	SetBatchLines,-1 ;Thanks Helgef <3
@@ -21,7 +21,7 @@
 	Gui, Add, Text, x12 y19 w90 h20 , Where to search:
 	Gui, Add, Text, x335 y60 w150 h20 +Right vScanningText,
 	Gui, Add, Button, x452 y19 w30 h20 gSelectSearchDirectory, ..
-	Gui, Add, Button, x190 y49 w100 h30 gFindZeroByteFiles vFindFilesButton, Find zero byte files
+	Gui, Add, Button, x190 y49 w100 h30 gFindZeroByteFiles vFindFilesButton Default, Find zero byte files
 	Gui, Add, Button, x190 y49 w100 h30 gCancelScan vCancelScanButton, Cancel
 	GuiControl,Hide,CancelScanButton
 	Gui, Add, Checkbox, x10 y49 w170 vRecurse Checked%Recurse%,Scan inside sub-directories
