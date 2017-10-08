@@ -1,48 +1,55 @@
 ﻿;Environment
-	;Version: 1.022. 7th Oct 2017
-	#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
-	#SingleInstance Force
-	SetBatchLines,-1 ;Thanks Helgef <3
-	
+;Version: 1.022. 7th Oct 2017
+#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
+#SingleInstance Force
+SetBatchLines,-1 ;Thanks Helgef <3
+
 ;Variables
-	;Get settings from ini file. Check to see if .ini file exists first.
-		Ifexist,ZeroByteFinderSettings.ini
-		{
+NameOfProgram = xcloudx01's Empty File Finder
+;Get settings from ini file. Check to see if .ini file exists first.
+Ifexist,ZeroByteFinderSettings.ini
+{
 			fileread,Temp,ZeroByteFinderSettings.ini
 			ifinstring,Temp,[settings]
 				GoSub,LoadSettings
 			Else
 				gosub, SetDefaultVariableValues
-		}
-		Else
-			gosub, SetDefaultVariableValues
+}
+Else
+	gosub, SetDefaultVariableValues
 
 ;GUI
-	Gui, Add, Text, x12 y19 w90 h20 , Where to search:
-	Gui, Add, Text, x335 y60 w150 h20 +Right vScanningText,
-	Gui, Add, Button, x452 y19 w30 h20 gSelectSearchDirectory, ..
-	Gui, Add, Button, x190 y49 w100 h30 gFindZeroByteFiles vFindFilesButton Default, Find zero byte files
-	Gui, Add, Button, x190 y49 w100 h30 gCancelScan vCancelScanButton, Cancel
-	GuiControl,Hide,CancelScanButton
-	Gui, Add, Checkbox, x10 y49 w170 vRecurse Checked%Recurse%,Scan inside sub-directories
-	Gui, Add, Edit, x102 y19 w340 h20 vSearchDirectory, %SearchDirectory%
-	Gui, Add, Progress, x10 y80 w475 h10 cBlue vProgressBar
-	Gui, Show, h100 w490, xcloudx01's Empty File Finder
-	Menu,Menu1,Add,Copy path to clipboard,CopyToClipboard ;Used when rightclicking a found empty file.
-	Menu,Menu1,Add,Show in Explorer,HighlightInExplorer ;Used when rightclicking a found empty file.
-	Menu,Menu1,Add,Delete file/s,DeleteFile ;Used when rightclicking a found empty file.
+Gui, Add, Text, x12 y19 w90 h20 , Where to search:
+Gui, Add, Text, x335 y60 w150 h20 +Right vScanningText,
+Gui, Add, Button, x452 y19 w30 h20 gSelectSearchDirectory, ..
+Gui, Add, Button, x190 y49 w100 h30 gFindZeroByteFiles vFindFilesButton Default, Find zero byte files
+Gui, Add, Button, x190 y49 w100 h30 gCancelScan vCancelScanButton, Cancel
+GuiControl,Hide,CancelScanButton
+Gui, Add, Checkbox, x10 y49 w170 vRecurse Checked%Recurse%,Scan inside sub-directories
+Gui, Add, Edit, x102 y19 w340 h20 vSearchDirectory, %SearchDirectory%
+Gui, Add, Progress, x10 y80 w475 h10 cBlue vProgressBar
+Gui, Show, h100 w490, %NameOfProgram%
+Menu,Menu1,Add,Copy path to clipboard,CopyToClipboard ;Used when rightclicking a found empty file.
+Menu,Menu1,Add,Show in Explorer,HighlightInExplorer ;Used when rightclicking a found empty file.
+Menu,Menu1,Add,Delete file/s,DeleteFile ;Used when rightclicking a found empty file.
 
 ;Hotkeys
-	Hotkey,IfWinActive,Empty files were found!
-	Hotkey,del,DeleteFile
-	Return
+Hotkey,IfWinActive,Empty files were found!
+Hotkey,del,DeleteFile
+Hotkey,IfWinActive,%NameOfProgram%
+Hotkey,esc,GuiClose
+Hotkey,IfWinActive,Empty files were found!
+Hotkey,esc,2GuiClose
+Hotkey,IfWinActive,Delete file confirmation
+Hotkey,esc,DeleteMultipleFilesNo
+Return
 
 ;Buttons
-	FindZeroByteFiles: ;Main function of the script
-		Gui 1:submit,nohide
-		GuiControl 1:,ProgressBar,0
-		IfNotExist,%SearchDirectory% ;Only run when searchdir actually exists.
-		{
+FindZeroByteFiles: ;Main function of the script
+Gui 1:submit,nohide
+GuiControl 1:,ProgressBar,0
+IfNotExist,%SearchDirectory% ;Only run when searchdir actually exists.
+{
 			msgbox,48,Error!,The search directory was not found!
 			return
 		}
@@ -231,48 +238,48 @@
 				SelectedEventInListView := RowNumber
 			}
 			return
-		}
-		return
+}
+return
 
 ;Subroutines
-	SetDefaultVariableValues:
-		SearchDirectory = %A_WorkingDir%
-		Recurse = 1
-		return
+SetDefaultVariableValues:
+SearchDirectory = %A_WorkingDir%
+Recurse = 1
+return
 
-	LoadSettings:
-		iniread,Recurse,ZeroByteFinderSettings.ini,Settings,Recurse
-		iniread,SearchDirectory,ZeroByteFinderSettings.ini,Settings,SearchDirectory
-		if (SearchDirectory = "ERROR" or SearchDirectory = "") ;Restore default if saved value was an error or blank
-			SearchDirectory = %A_WorkingDir%
-		Return
-		
-	SaveSettings:
-		gui 1:submit,nohide
-		IniWrite,%Recurse%,ZeroByteFinderSettings.ini,Settings,Recurse
-		IniWrite,%SearchDirectory%,ZeroByteFinderSettings.ini,Settings,SearchDirectory
-		return
-		
-	CopyToClipboard:
-		clipboard = %SelectedZeroByteFile%
-		return
-	
-	HighlightInExplorer:
-	Run,% "explorer.exe /e`, [color=Red]/n[/color]`, /select`," SelectedZeroByteFile
-	return
+LoadSettings:
+iniread,Recurse,ZeroByteFinderSettings.ini,Settings,Recurse
+iniread,SearchDirectory,ZeroByteFinderSettings.ini,Settings,SearchDirectory
+if (SearchDirectory = "ERROR" or SearchDirectory = "") ;Restore default if saved value was an error or blank
+	SearchDirectory = %A_WorkingDir%
+Return
 
-	GuiClose:
-		gosub,SaveSettings
-		ExitApp
+SaveSettings:
+gui 1:submit,nohide
+IniWrite,%Recurse%,ZeroByteFinderSettings.ini,Settings,Recurse
+IniWrite,%SearchDirectory%,ZeroByteFinderSettings.ini,Settings,SearchDirectory
+return
 
-	2GuiClose:
-		GuiControl 1:,ProgressBar,0
-		GuiControl 1:,ScanningText,
-		GuiControl 1:Hide,CancelScanButton
-		GuiControl 1:Show,FindFilesButton
-		Gui 2: Destroy
-		return
-		
-	3GuiClose:
-		Gui 3: Destroy
-		return
+CopyToClipboard:
+clipboard = %SelectedZeroByteFile%
+return
+
+HighlightInExplorer:
+Run,% "explorer.exe /e`, [color=Red]/n[/color]`, /select`," SelectedZeroByteFile
+return
+
+GuiClose:
+gosub,SaveSettings
+ExitApp
+
+2GuiClose:
+GuiControl 1:,ProgressBar,0
+GuiControl 1:,ScanningText,
+GuiControl 1:Hide,CancelScanButton
+GuiControl 1:Show,FindFilesButton
+Gui 2: Destroy
+return
+
+3GuiClose:
+Gui 3: Destroy
+return
