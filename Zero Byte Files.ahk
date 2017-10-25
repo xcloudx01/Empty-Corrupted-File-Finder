@@ -1,5 +1,5 @@
 ﻿;Environment
-;Version: 1.022. 7th Oct 2017
+;Version: 1.023. 8th Oct 2017
 #NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
 #SingleInstance Force
 SetBatchLines,-1 ;Thanks Helgef <3
